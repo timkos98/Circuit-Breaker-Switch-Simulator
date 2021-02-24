@@ -44,46 +44,35 @@ GPIO.output(redLED,   0)
 
 # Display setup
 disp = I2C_LCD_driver.lcd()
-switch_textRefreshSpeed = 0.35
-breaker_textRefreshSpeed = 0.1
 
-# Row selection variable set to something > 2 so it can't change the variables
-clickedRot = 3
+# Cursor Position set to lock all values just in case
+cursorPos = 0
 # Get Switch Initial Values
-SoDelayMin = initVals.Switch_OpenDelay_min
-SoDelayMax = initVals.Switch_OpenDelay_max
-SoTs = initVals.Switch_OpenTimestep
-ScDelayMin = initVals.Switch_CloseDelay_min
-ScDelayMax = initVals.Switch_CloseDelay_max
-ScTs = initVals.Switch_CloseTimestep
-
-# Switch Center Values:
-SoDelay = (SoDelayMax - SoDelayMin)/2
-ScDelay = (ScDelayMax - SoDelayMin)/2
-# SoDelay = SoDelayMin
-# ScDelay = ScDelayMin
+SoDelay = initVals.Switch_OpenInitialValue
+ScDelay = initVals.Switch_CloseInitialValue
 
 # Get Breaker Initial Values
-conversionFactor = 1000
-BoDelayMin = initVals.Breaker_OpenDelay_min * conversionFactor
-BoDelayMax = initVals.Breaker_OpenDelay_max * conversionFactor
-BoTs = initVals.Breaker_OpenTimestep * conversionFactor
-BcDelayMin = initVals.Breaker_CloseDelay_min * conversionFactor
-BcDelayMax = initVals.Breaker_CloseDelay_max * conversionFactor
-BcTs = initVals.Breaker_CloseTimestep * conversionFactor
+BoDelay = initVals.Breaker_OpenInitialValue
+BcDelay = initVals.Breaker_CloseInitialValue
 
-# Breaker Center Values:
-BoDelay = (BoDelayMax - BoDelayMin)/2
-BcDelay = (BcDelayMax - BoDelayMin)/2
-# BoDelay = BoDelayMin
-# BcDelay = BcDelayMin
+# Set digit maximums, minimus, and intrisic delay compensation
+compensation = 0.02
+d1Min = 0
+d2Min = 0
+d3Min = 0
+d1Max = 10
+d2Max = 9
+d3Max = 9
+
+maxDelay = d1Max + d2Max*0.1 + d3Max*0.01
+minDelay = compensation + d1Min + d2Min*0.1 + d3Min*0.01
+conversionFactor = 1000 # to convert seconds to miliseconds for the breaker display
 
 # Dial initial values:
-counter = 0
 step = 1
 dialChange = 0
-# bounctime -- if set too high this will slow down the max spped the dial will respond to
-btime = 90
+resetPressTime = 2 # in seconds
+btime = 90 # bounctime -- if set too high this will slow down the max spped the dial will respond to
 longPress = False
 
 # ==== Definition of functions ====
@@ -92,59 +81,143 @@ def slct_switch():
     # called when selection is switch simulation
     # always
     global switchSlct
-    global clickedRot
+    global cursorPos
     global encoder
     global textRefreshSpeed
     
-    clickedRot = 0
-
     # Functions used while switch is the selected device
     # Resets the delay values
     def reset():
         global SoDelay
         global ScDelay
-        global clickedRot
-        SoDelay = (SoDelayMax - SoDelayMin)/2
-        ScDelay = (ScDelayMax - SoDelayMin)/2
-        clickedRot = 0
-        
+        global cursorPos
+        global longPress
+
+        # Get Switch Initial Values
+        SoDelay = initVals.Switch_OpenInitialValue
+        ScDelay = initVals.Switch_CloseInitialValue
+        cursorPos = 0
+        longPress = False
+
     def updateDelays():
         global SoDelay
         global ScDelay
-        global clickedRot
+        global cursorPos
         global dialChange
-
-        if dialChange == 2 or dialChange == -2:
-            dialChange = dialChange*10
-        elif dialChange > 2 or dialChange < -2:
-            dialChange = dialChange*100
             
         OpossibleNextValue = SoDelay + dialChange*SoTs
         CpossibleNextValue = ScDelay + dialChange*ScTs
         dialChange = 0
         # check that this is within bounds
         # First for the open delay
-        if clickedRot == 1 and OpossibleNextValue >= SoDelayMin and OpossibleNextValue <= SoDelayMax:
+        if cursorPos == 1 and OpossibleNextValue >= SoDelayMin and OpossibleNextValue <= SoDelayMax:
             SoDelay = OpossibleNextValue
-        elif clickedRot == 1 and OpossibleNextValue < SoDelayMin:
+        elif cursorPos == 1 and OpossibleNextValue < SoDelayMin:
             SoDelay = SoDelayMin
-        elif clickedRot == 1 and OpossibleNextValue > SoDelayMax:
+        elif cursorPos == 1 and OpossibleNextValue > SoDelayMax:
             SoDelay = SoDelayMax
         # Now if close delay is selected
-        elif clickedRot == 2 and CpossibleNextValue >= ScDelayMin and CpossibleNextValue <= ScDelayMax:
+        elif cursorPos == 2 and CpossibleNextValue >= ScDelayMin and CpossibleNextValue <= ScDelayMax:
             ScDelay = CpossibleNextValue
-        elif clickedRot == 2 and CpossibleNextValue < ScDelayMin:
+        elif cursorPos == 2 and CpossibleNextValue < ScDelayMin:
             ScDelay = ScDelayMin
-        elif clickedRot == 2 and CpossibleNextValue > ScDelayMax:
+        elif cursorPos == 2 and CpossibleNextValue > ScDelayMax:
             ScDelay = ScDelayMax
-        elif clickedRot > 2:
+        elif cursorPos > 2:
             pass
 
-    # Make display row selection Variable (clickedRot)                                           
-    # 0 = no row (Both locked)                                                      
-    # 1 = Open delay selected and ready for adjustment                              
-    # 2 = Close delay selected and ready for adjustment
-    # 3 = reset to 0 (Both locked)
+    # Updates the contents on the screen
+    def updateDisplay():
+        global SoDelay
+        global ScDelay
+        global cursorPos
+        global dialChange
+        tempOpenDelay1 = SoDelay + dialChange
+        tempOpenDelay2 = SoDelay + dialChange * 0.1
+        tempOpenDelay3 = SoDelay + dialChange * 0.01
+        tempCloseDelay1 = ScDelay + dialChange
+        tempCloseDelay2 = ScDelay + dialChange * 0.1
+        tempCloseDelay3 = ScDelay + dialChange * 0.01
+
+        if cursorPos == 0:
+            # Locked
+            disp.lcd_display_string("Open Dly:  L   {:.2f}s".format(SoDelay),3)
+            disp.lcd_display_string("Close Dly: L   {:.2f}s".format(ScDelay),4)
+        elif cursorPos == 1 :
+            # row = 1, digit = 1
+            if tempOpenDelay1 >= minDelay and tempOpenDelay1 <= maxDelay:
+                SoDelay = tempOpenDelay1
+            elif tempOpenDelay1 < minDelay:
+                SoDelay = minDelay
+            elif tempOpenDelay1 > maxDelay:
+                SoDelay = maxDelay
+            dialChange = 0
+            disp.lcd_display_string("Open Dly:  [1] {:.2f}s".format(SoDelay),3)
+            disp.lcd_display_string("Close Dly: L   {:.2f}s".format(ScDelay),4)
+
+        elif cursorPos == 2:
+            # row = 1, digit = 2
+            if tempOpenDelay2 >= minDelay and tempOpenDelay2 <= maxDelay:
+                SoDelay = tempOpenDelay2
+            elif tempOpenDelay2 < minDelay:
+                SoDelay = minDelay
+            elif tempOpenDelay2 > maxDelay:
+                SoDelay = maxDelay
+            dialChange = 0
+            disp.lcd_display_string("Open Dly:  [2] {:.2f}s".format(SoDelay),3)
+            disp.lcd_display_string("Close Dly: L   {:.2f}s".format(ScDelay),4)
+        elif cursorPos == 3:
+            # row = 1, digit = 3
+            if tempOpenDelay3 >= minDelay and tempOpenDelay3 <= maxDelay:
+                SoDelay = tempOpenDelay3
+            elif tempOpenDelay3 < minDelay:
+                SoDelay = minDelay
+            elif tempOpenDelay3 > maxDelay:
+                SoDelay = maxDelay
+            dialChange = 0
+            disp.lcd_display_string("Open Dly:  [3] {:.2f}s".format(SoDelay),3)
+            disp.lcd_display_string("Close Dly: L   {:.2f}s".format(ScDelay),4)
+        elif cursorPos == 4:
+            # row = 2, digit = 1
+            if tempCloseDelay1 >= minDelay and tempCloseDelay1 <= maxDelay:
+                ScDelay = tempCloseDelay1
+            elif tempCloseDelay1 < minDelay:
+                ScDelay = minDelay
+            elif tempCloseDelay1 > maxDelay:
+                ScDelay = maxDelay
+            dialChange = 0
+            disp.lcd_display_string("Open Dly:  L   {:.2f}s".format(SoDelay),3)
+            disp.lcd_display_string("Close Dly: [1] {:.2f}s".format(ScDelay),4)
+        elif cursorPos == 5:
+            # row = 2, digit = 2
+            if tempCloseDelay2 >= minDelay and tempCloseDelay2 <= maxDelay:
+                ScDelay = tempCloseDelay2
+            elif tempCloseDelay2 < minDelay:
+                ScDelay = minDelay
+            elif tempCloseDelay2 > maxDelay:
+                ScDelay = maxDelay
+            dialChange = 0
+            disp.lcd_display_string("Open Dly:  L   {:.2f}s".format(SoDelay),3)
+            disp.lcd_display_string("Close Dly: [2] {:.2f}s".format(ScDelay),4)
+        elif cursorPos == 6:
+            # row = 2, digit = 3
+            if tempCloseDelay3 >= minDelay and tempCloseDelay3 <= maxDelay:
+                ScDelay = tempCloseDelay3
+            elif tempCloseDelay3 < minDelay:
+                ScDelay = minDelay
+            elif tempCloseDelay3 > maxDelay:
+                ScDelay = maxDelay
+            dialChange = 0
+            disp.lcd_display_string("Open Dly:  L   {:.2f}s".format(SoDelay),3)
+            disp.lcd_display_string("Close Dly: [3] {:.2f}s".format(ScDelay),4)
+        elif cursorPos >= 7:
+            # reset the position to lock both values
+            cursorPos = 0
+            updateDisplay()
+
+    # Initialize cursor position as the locked position
+    cursorPos = 0
+    # Initalize display
     disp.lcd_display_string("Simulating: Switch ", 1)
     disp.lcd_display_string("*push dial for next*", 2)
     disp.lcd_display_string("Open Dly:  L   {:.2f}s".format(SoDelay),3)
@@ -152,24 +225,24 @@ def slct_switch():
         
     while GPIO.input(switchSlct):
         # Be a switch simulator
-        # Selection change based on row variable
-
+        # Save 
+        # Check for longPress
         if longPress:
             reset()
+            updateDisplay()
 
-        sleep(switch_textRefreshSpeed)
-        updateDelays()
-        if clickedRot == 0:
-            disp.lcd_display_string("Open Dly:  L   {:.2f}s".format(SoDelay),3)
-            disp.lcd_display_string("Close Dly: L   {:.2f}s".format(ScDelay),4)
-        elif clickedRot == 1:
-            disp.lcd_display_string("Open Dly:      {:.2f}s".format(SoDelay),3)
-            disp.lcd_display_string("Close Dly: L   {:.2f}s".format(ScDelay),4)
-        elif clickedRot == 2:
-            disp.lcd_display_string("Open Dly:  L   {:.2f}s".format(SoDelay),3)
-            disp.lcd_display_string("Close Dly:     {:.2f}s".format(ScDelay),4)
-        elif clickedRot == 3:
-            clickedRot = 0
+        # Check for dial press
+        if GPIO.event_detected(click):
+            rot_sw_clicked(click)
+            updateDisplay()
+        
+        # Check for dial change
+        if GPIO.event_detected(clk) and cursorPos > 0:
+            rot_clk_change(clk)
+            updateDisplay()
+        if GPIO.event_detected(dt) and cursorPos > 0:
+            rot_dt_change(dt)
+            updateDisplay()
 
     # Bridge gap between switch, just to be sure it isn't in an in between
     # selections state
@@ -184,25 +257,25 @@ def slct_breaker():
     # called when selection is breaker simulatio                                                                                                                                 
     # always                                                                                                                                                                      
     global breakerSlct
-    global clickedRot
+    global cursorPos
     global encoder
 
-    clickedRot = 0
+    cursorPos = 0
 
     # Functions used while simulating a breaker
     # Resets all delay values to the default values
     def reset():
         global BoDelay
         global BcDelay
-        global clickedRot
+        global cursorPos
         BoDelay = (BoDelayMax - BoDelayMin)/2
         BcDelay = (BcDelayMax - BoDelayMin)/2
-        clickedRot = 0
+        cursorPos = 0
         
     def updateDelays():
         global BoDelay
         global BcDelay
-        global clickedRot
+        global cursorPos
         global dialChange
 
         # Increase the speed of increase if turning quickly
@@ -216,20 +289,20 @@ def slct_breaker():
         dialChange = 0
         # check that this is within bounds                                                                                                                                      
         # First for the open delay
-        if clickedRot == 1 and OpossibleNextValue >= BoDelayMin and OpossibleNextValue <= BoDelayMax:
+        if cursorPos == 1 and OpossibleNextValue >= BoDelayMin and OpossibleNextValue <= BoDelayMax:
             BoDelay = OpossibleNextValue
-        elif clickedRot == 1 and OpossibleNextValue < BoDelayMin:
+        elif cursorPos == 1 and OpossibleNextValue < BoDelayMin:
             BoDelay = BoDelayMin
-        elif clickedRot == 1 and OpossibleNextValue > BoDelayMax:
+        elif cursorPos == 1 and OpossibleNextValue > BoDelayMax:
             BoDelay = BoDelayMax
         # Now if close delay is selected                                                                                                                                          
-        elif clickedRot == 2 and CpossibleNextValue >= BcDelayMin and CpossibleNextValue <= BcDelayMax:
+        elif cursorPos == 2 and CpossibleNextValue >= BcDelayMin and CpossibleNextValue <= BcDelayMax:
             BcDelay = CpossibleNextValue
-        elif clickedRot == 2 and CpossibleNextValue < BcDelayMin:
+        elif cursorPos == 2 and CpossibleNextValue < BcDelayMin:
             BcDelay = BcDelayMin
-        elif clickedRot == 2 and CpossibleNextValue > BcDelayMax:
+        elif cursorPos == 2 and CpossibleNextValue > BcDelayMax:
             BcDelay = BcDelayMax
-        elif clickedRot > 2:
+        elif cursorPos > 2:
             pass
 
     # from encoder import Encoder
@@ -256,7 +329,6 @@ def slct_breaker():
     while GPIO.input(breakerSlct):
         # Be a breaker simulator                                                                                                                                                 
         # Selection change based on row variable
-        sleep(breaker_textRefreshSpeed)
         updateDelays()
         
         if longPress:
@@ -273,17 +345,17 @@ def slct_breaker():
             cDelayAsString = "{}".format(round(BcDelay))
         
         
-        if clickedRot == 0:
+        if cursorPos == 0:
             disp.lcd_display_string("Open Dly:  L   {}ms".format(oDelayAsString),3)
             disp.lcd_display_string("Close Dly: L   {}ms".format(cDelayAsString),4)
-        elif clickedRot == 1:
+        elif cursorPos == 1:
             disp.lcd_display_string("Open Dly:      {}ms".format(oDelayAsString),3)
             disp.lcd_display_string("Close Dly: L   {}ms".format(cDelayAsString),4)
-        elif clickedRot == 2:
+        elif cursorPos == 2:
             disp.lcd_display_string("Open Dly:  L   {}ms".format(oDelayAsString),3)
             disp.lcd_display_string("Close Dly:     {}ms".format(cDelayAsString),4)
-        elif clickedRot == 3:
-            clickedRot = 0
+        elif cursorPos == 3:
+            cursorPos = 0
 
     # Bridge gap between switch, just to be sure it isn't in an in between 
     sleep(0.5)
@@ -413,16 +485,23 @@ def rot_dt_change(channel):
     if clkState == 1 and dtState == 0:
         dialChange = dialChange + step
 
-# Callback from rotary encoder switch pin (center press down)
+# Function for checking rotary encoder switch pin (center press down)
 def rot_sw_clicked(channel):
-    global clickedRot
+    global cursorPos
     global longPress
-    clickedRot += 1
+    global resetPressTime
+
+    cursorPos += 1
     sleep(0.5)
 
+    counter = 0
     while GPIO.input(channel):
-        longPress = True
-    longPress = False
+        sleep(0.5)
+        counter += 1
+        if counter >=resetPressTime:
+            longPress = True
+            cursorPos -= 1
+            break
     
 
 # ==== Interrupt event handling ====
@@ -436,10 +515,10 @@ GPIO.add_event_detect(tripOvrd, GPIO.RISING, callback=trip_override_high)
 # case: Close Override set HIGH
 GPIO.add_event_detect(closeOvrd, GPIO.RISING, callback=close_override_high)
 # case: Center click
-GPIO.add_event_detect(click, GPIO.RISING, callback=rot_sw_clicked)
+GPIO.add_event_detect(click, GPIO.RISING)
 # case: Dial rotation
-GPIO.add_event_detect(clk, GPIO.FALLING, callback=rot_clk_change, bouncetime=btime)
-GPIO.add_event_detect(dt, GPIO.FALLING, callback=rot_dt_change, bouncetime=btime)
+GPIO.add_event_detect(clk, GPIO.FALLING, bouncetime=btime)
+GPIO.add_event_detect(dt, GPIO.FALLING, bouncetime=btime)
 
 # Initial selector switch position check
 if GPIO.input(switchSlct):
