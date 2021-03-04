@@ -72,7 +72,7 @@ conversionFactor = 1000 # to convert seconds to miliseconds for the breaker disp
 step = 1
 dialChange = 0
 resetPressTime = 2 # in seconds
-btime = 90 # bounctime -- if set too high this will slow down the max spped the dial will respond to
+btime = 250 # bounctime -- if set too high this will slow down the max spped the dial will respond to
 longPress = False
 
 # ==== Definition of functions ====
@@ -99,33 +99,6 @@ def slct_switch():
         cursorPos = 0
         longPress = False
 
-    def updateDelays():
-        global SoDelay
-        global ScDelay
-        global cursorPos
-        global dialChange
-            
-        OpossibleNextValue = SoDelay + dialChange*SoTs
-        CpossibleNextValue = ScDelay + dialChange*ScTs
-        dialChange = 0
-        # check that this is within bounds
-        # First for the open delay
-        if cursorPos == 1 and OpossibleNextValue >= SoDelayMin and OpossibleNextValue <= SoDelayMax:
-            SoDelay = OpossibleNextValue
-        elif cursorPos == 1 and OpossibleNextValue < SoDelayMin:
-            SoDelay = SoDelayMin
-        elif cursorPos == 1 and OpossibleNextValue > SoDelayMax:
-            SoDelay = SoDelayMax
-        # Now if close delay is selected
-        elif cursorPos == 2 and CpossibleNextValue >= ScDelayMin and CpossibleNextValue <= ScDelayMax:
-            ScDelay = CpossibleNextValue
-        elif cursorPos == 2 and CpossibleNextValue < ScDelayMin:
-            ScDelay = ScDelayMin
-        elif cursorPos == 2 and CpossibleNextValue > ScDelayMax:
-            ScDelay = ScDelayMax
-        elif cursorPos > 2:
-            pass
-
     # Updates the contents on the screen
     def updateDisplay():
         global SoDelay
@@ -141,87 +114,85 @@ def slct_switch():
 
         if cursorPos == 0:
             # Locked
-            disp.lcd_display_string("Open Dly:  L   {:.2f}s".format(SoDelay),3)
-            disp.lcd_display_string("Close Dly: L   {:.2f}s".format(ScDelay),4)
+            oStatus = "L"
+            cStatus = "L"
         elif cursorPos == 1 :
             # row = 1, digit = 1
+            oStatus = "1"
+            cStatus = "L"
             if tempOpenDelay1 >= minDelay and tempOpenDelay1 <= maxDelay:
                 SoDelay = tempOpenDelay1
             elif tempOpenDelay1 < minDelay:
                 SoDelay = minDelay
             elif tempOpenDelay1 > maxDelay:
                 SoDelay = maxDelay
-            dialChange = 0
-            disp.lcd_display_string("Open Dly:  [1] {:.2f}s".format(SoDelay),3)
-            disp.lcd_display_string("Close Dly: L   {:.2f}s".format(ScDelay),4)
-
         elif cursorPos == 2:
             # row = 1, digit = 2
+            oStatus = "2"
+            cStatus = "L"
             if tempOpenDelay2 >= minDelay and tempOpenDelay2 <= maxDelay:
                 SoDelay = tempOpenDelay2
             elif tempOpenDelay2 < minDelay:
                 SoDelay = minDelay
             elif tempOpenDelay2 > maxDelay:
                 SoDelay = maxDelay
-            dialChange = 0
-            disp.lcd_display_string("Open Dly:  [2] {:.2f}s".format(SoDelay),3)
-            disp.lcd_display_string("Close Dly: L   {:.2f}s".format(ScDelay),4)
         elif cursorPos == 3:
             # row = 1, digit = 3
+            oStatus = "3"
+            cStatus = "L"
             if tempOpenDelay3 >= minDelay and tempOpenDelay3 <= maxDelay:
                 SoDelay = tempOpenDelay3
             elif tempOpenDelay3 < minDelay:
                 SoDelay = minDelay
             elif tempOpenDelay3 > maxDelay:
                 SoDelay = maxDelay
-            dialChange = 0
-            disp.lcd_display_string("Open Dly:  [3] {:.2f}s".format(SoDelay),3)
-            disp.lcd_display_string("Close Dly: L   {:.2f}s".format(ScDelay),4)
         elif cursorPos == 4:
             # row = 2, digit = 1
+            oStatus = "L"
+            cStatus = "1"
             if tempCloseDelay1 >= minDelay and tempCloseDelay1 <= maxDelay:
                 ScDelay = tempCloseDelay1
             elif tempCloseDelay1 < minDelay:
                 ScDelay = minDelay
             elif tempCloseDelay1 > maxDelay:
                 ScDelay = maxDelay
-            dialChange = 0
-            disp.lcd_display_string("Open Dly:  L   {:.2f}s".format(SoDelay),3)
-            disp.lcd_display_string("Close Dly: [1] {:.2f}s".format(ScDelay),4)
         elif cursorPos == 5:
             # row = 2, digit = 2
+            oStatus = "L"
+            cStatus = "2"
             if tempCloseDelay2 >= minDelay and tempCloseDelay2 <= maxDelay:
                 ScDelay = tempCloseDelay2
             elif tempCloseDelay2 < minDelay:
                 ScDelay = minDelay
             elif tempCloseDelay2 > maxDelay:
                 ScDelay = maxDelay
-            dialChange = 0
-            disp.lcd_display_string("Open Dly:  L   {:.2f}s".format(SoDelay),3)
-            disp.lcd_display_string("Close Dly: [2] {:.2f}s".format(ScDelay),4)
         elif cursorPos == 6:
             # row = 2, digit = 3
+            oStatus = "L"
+            cStatus = "3"
             if tempCloseDelay3 >= minDelay and tempCloseDelay3 <= maxDelay:
                 ScDelay = tempCloseDelay3
             elif tempCloseDelay3 < minDelay:
                 ScDelay = minDelay
             elif tempCloseDelay3 > maxDelay:
                 ScDelay = maxDelay
-            dialChange = 0
-            disp.lcd_display_string("Open Dly:  L   {:.2f}s".format(SoDelay),3)
-            disp.lcd_display_string("Close Dly: [3] {:.2f}s".format(ScDelay),4)
         elif cursorPos >= 7:
             # reset the position to lock both values
             cursorPos = 0
-            updateDisplay()
+            oStatus = "L"
+            cStatus = "L"
+        
+        disp.lcd_display_string("Open Dly:  [{}] {:.2f}s".format(oStatus, SoDelay),3)
+        disp.lcd_display_string("Close Dly: [{}] {:.2f}s".format(cStatus, ScDelay),4)
+        dialChange = 0
 
     # Initialize cursor position as the locked position
     cursorPos = 0
     # Initalize display
     disp.lcd_display_string("Simulating: Switch ", 1)
     disp.lcd_display_string("*push dial for next*", 2)
-    disp.lcd_display_string("Open Dly:  L   {:.2f}s".format(SoDelay),3)
-    disp.lcd_display_string("Close Dly: L   {:.2f}s".format(ScDelay),4)
+    disp.lcd_display_string("Open Dly:  [L] {:.2f}s".format(SoDelay),3)
+    disp.lcd_display_string("Close Dly: [L] {:.2f}s".format(ScDelay),4)
         
     while GPIO.input(switchSlct):
         # Be a switch simulator
@@ -246,6 +217,7 @@ def slct_switch():
 
     # Bridge gap between switch, just to be sure it isn't in an in between
     # selections state
+
     sleep(0.5)
     # Now check if the breaker option is selected. If not, go back to being a switch simiulator
     if breakerSlct:
@@ -272,38 +244,101 @@ def slct_breaker():
         BcDelay = (BcDelayMax - BoDelayMin)/2
         cursorPos = 0
         
-    def updateDelays():
+    def updateDisplay():
         global BoDelay
         global BcDelay
         global cursorPos
         global dialChange
+        tempOpenDelay1 = BoDelay + dialChange
+        tempOpenDelay2 = BoDelay + dialChange * 0.1
+        tempOpenDelay3 = BoDelay + dialChange * 0.01
+        tempCloseDelay1 = BcDelay + dialChange
+        tempCloseDelay2 = BcDelay + dialChange * 0.1
+        tempCloseDelay3 = BcDelay + dialChange * 0.01
 
-        # Increase the speed of increase if turning quickly
-        if dialChange == 2 or dialChange == -2:
-            dialChange = dialChange*10
-        elif dialChange > 2 or dialChange < -2:
-            dialChange = dialChange*20
-            
-        OpossibleNextValue = BoDelay + dialChange*BoTs
-        CpossibleNextValue = BcDelay + dialChange*BcTs
-        dialChange = 0
-        # check that this is within bounds                                                                                                                                      
-        # First for the open delay
-        if cursorPos == 1 and OpossibleNextValue >= BoDelayMin and OpossibleNextValue <= BoDelayMax:
-            BoDelay = OpossibleNextValue
-        elif cursorPos == 1 and OpossibleNextValue < BoDelayMin:
-            BoDelay = BoDelayMin
-        elif cursorPos == 1 and OpossibleNextValue > BoDelayMax:
-            BoDelay = BoDelayMax
-        # Now if close delay is selected                                                                                                                                          
-        elif cursorPos == 2 and CpossibleNextValue >= BcDelayMin and CpossibleNextValue <= BcDelayMax:
-            BcDelay = CpossibleNextValue
-        elif cursorPos == 2 and CpossibleNextValue < BcDelayMin:
-            BcDelay = BcDelayMin
-        elif cursorPos == 2 and CpossibleNextValue > BcDelayMax:
-            BcDelay = BcDelayMax
-        elif cursorPos > 2:
-            pass
+        if cursorPos == 0:
+            # Locked
+            oStatus = "L"
+            cStatus = "L"
+            disp.lcd_display_string("Open Dly:  L   {:.2f}s".format(BoDelay),3)
+            disp.lcd_display_string("Close Dly: L   {:.2f}s".format(BcDelay),4)
+        elif cursorPos == 1 :
+            # row = 1, digit = 1
+            oStatus = "1"
+            cStatus = "L"
+            if tempOpenDelay1 >= minDelay and tempOpenDelay1 <= maxDelay:
+                BoDelay = tempOpenDelay1
+            elif tempOpenDelay1 < minDelay:
+                BoDelay = minDelay
+            elif tempOpenDelay1 > maxDelay:
+                BoDelay = maxDelay
+            dialChange = 0
+            disp.lcd_display_string("Open Dly:  [1] {:.2f}s".format(BoDelay),3)
+            disp.lcd_display_string("Close Dly: L   {:.2f}s".format(BcDelay),4)
+
+        elif cursorPos == 2:
+            # row = 1, digit = 2
+            if tempOpenDelay2 >= minDelay and tempOpenDelay2 <= maxDelay:
+                BoDelay = tempOpenDelay2
+            elif tempOpenDelay2 < minDelay:
+                BoDelay = minDelay
+            elif tempOpenDelay2 > maxDelay:
+                BoDelay = maxDelay
+            dialChange = 0
+            disp.lcd_display_string("Open Dly:  [2] {:.2f}s".format(BoDelay),3)
+            disp.lcd_display_string("Close Dly: L   {:.2f}s".format(BcDelay),4)
+        elif cursorPos == 3:
+            # row = 1, digit = 3
+            if tempOpenDelay3 >= minDelay and tempOpenDelay3 <= maxDelay:
+                BoDelay = tempOpenDelay3
+            elif tempOpenDelay3 < minDelay:
+                BoDelay = minDelay
+            elif tempOpenDelay3 > maxDelay:
+                BoDelay = maxDelay
+            dialChange = 0
+            disp.lcd_display_string("Open Dly:  [3] {:.2f}s".format(BoDelay),3)
+            disp.lcd_display_string("Close Dly: L   {:.2f}s".format(BcDelay),4)
+        elif cursorPos == 4:
+            # row = 2, digit = 1
+            status = 1
+            if tempCloseDelay1 >= minDelay and tempCloseDelay1 <= maxDelay:
+                BcDelay = tempCloseDelay1
+            elif tempCloseDelay1 < minDelay:
+                BcDelay = minDelay
+            elif tempCloseDelay1 > maxDelay:
+                BcDelay = maxDelay
+            dialChange = 0
+            disp.lcd_display_string("Open Dly:  L   {:.2f}s".format(BoDelay),3)
+            disp.lcd_display_string("Close Dly: [1] {:.2f}s".format(BcDelay),4)
+        elif cursorPos == 5:
+            # row = 2, digit = 2
+            staus = 2
+            if tempCloseDelay2 >= minDelay and tempCloseDelay2 <= maxDelay:
+                BcDelay = tempCloseDelay2
+            elif tempCloseDelay2 < minDelay:
+                BcDelay = minDelay
+            elif tempCloseDelay2 > maxDelay:
+                BcDelay = maxDelay
+            dialChange = 0
+            disp.lcd_display_string("Open Dly:  L   {:.2f}s".format(BoDelay),3)
+            disp.lcd_display_string("Close Dly: [2] {:.2f}s".format(BcDelay),4)
+        elif cursorPos == 6:
+            # row = 2, digit = 3
+            status = 3
+            if tempCloseDelay3 >= minDelay and tempCloseDelay3 <= maxDelay:
+                BcDelay = tempCloseDelay3
+            elif tempCloseDelay3 < minDelay:
+                BcDelay = minDelay
+            elif tempCloseDelay3 > maxDelay:
+                BcDelay = maxDelay
+            dialChange = 0
+        elif cursorPos >= 7:
+            # reset the position to lock both values
+            cursorPos = 0
+            updateDisplay()
+        
+        disp.lcd_display_string("Open Dly:  [{}] {:.2f}s".format(oStatus, BoDelay),3)
+        disp.lcd_display_string("Close Dly: [{}] {:.2f}s".format(cStatus, BcDelay),4)
 
     # from encoder import Encoder
     # Make display row selection Variable                                                                                                                                        
@@ -515,7 +550,7 @@ GPIO.add_event_detect(tripOvrd, GPIO.RISING, callback=trip_override_high)
 # case: Close Override set HIGH
 GPIO.add_event_detect(closeOvrd, GPIO.RISING, callback=close_override_high)
 # case: Center click
-GPIO.add_event_detect(click, GPIO.RISING)
+GPIO.add_event_detect(click, GPIO.RISING, bouncetime=300)
 # case: Dial rotation
 GPIO.add_event_detect(clk, GPIO.FALLING, bouncetime=btime)
 GPIO.add_event_detect(dt, GPIO.FALLING, bouncetime=btime)

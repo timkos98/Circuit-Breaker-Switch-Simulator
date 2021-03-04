@@ -4,9 +4,9 @@
 # Breaker properties
 Breaker_OpenInitialValue = 0.04 # seconds **Must be in range**
 
-Breaker_CloseInitialValue = 0.04 # seconds **Must be in range**
+Breaker_CloseInitialValue = 0.075 # seconds **Must be in range**
 
 # Switch Properisties
-Switch_OpenInitialValue = 0.04   # seconds **Must be in range**
+Switch_OpenInitialValue = 0.7   # seconds **Must be in range**
 
-Switch_CloseInitialValue = 0.04  # seconds **Must be in range**
+Switch_CloseInitialValue = 0.7  # seconds **Must be in range**
