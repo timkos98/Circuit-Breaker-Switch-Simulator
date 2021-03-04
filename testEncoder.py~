@@ -1,0 +1,17 @@
+# Testing the code for the rotary encoder
+import RPi.GPIO as GPIO
+from time import sleep
+
+GPIO.setmode(GPIO.BOARD)
+GPIO.setwarnings(False)
+
+clk = 16
+dt = 18
+GPIO.setup(clk,          GPIO.IN, pull_up_down=GPIO.PUD_DOWN)
+GPIO.setup(dt,           GPIO.IN, pull_up_down=GPIO.PUD_DOWN)
+
+enable = 1
+step = 1
+dialChange = 0
+while enable:
+    print("clk: ", GPIO.input(clk), " dt: ", GPIO.input(dt))
