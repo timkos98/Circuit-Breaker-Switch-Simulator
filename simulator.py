@@ -519,6 +519,8 @@ def rot_clk_change(channel):
     global dialChange
     global step
     global btime
+    global clk
+    global dt
     
     clkState = GPIO.input(clk)
     dtState = GPIO.input(dt)
@@ -534,6 +536,8 @@ def rot_dt_change(channel):
     global dialChange
     global step
     global btime
+    global clk
+    global dt
 
     clkState = GPIO.input(clk)
     dtState = GPIO.input(dt)
