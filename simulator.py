@@ -431,7 +431,7 @@ def trip_high(channel):
         GPIO.output(redLED, 0)
         GPIO.output(greenLED, 1)
     elif GPIO.input(breakerSlct):
-        sleep(BoDelay/conversionFactor-openComp)
+        sleep((BoDelay/conversionFactor)-openComp)
         GPIO.output(output, 0)
         GPIO.output(redLED, 0)
         GPIO.output(greenLED, 1)
@@ -448,13 +448,13 @@ def close_high(channel):
     global breakerSlct
     global closeComp
     
-    if GPIO.input(switchSlct-closeComp):
-        sleep(ScDelay)
+    if GPIO.input(switchSlct):
+        sleep(ScDelay-closeComp)
         GPIO.output(output, 1)
         GPIO.output(redLED, 1)
         GPIO.output(greenLED, 0)
     elif GPIO.input(breakerSlct):
-        sleep(BcDelay/conversionFactor-closeComp)
+        sleep((BcDelay/conversionFactor)-closeComp)
         GPIO.output(output, 1)
         GPIO.output(redLED, 1)
         GPIO.output(greenLED, 0)
