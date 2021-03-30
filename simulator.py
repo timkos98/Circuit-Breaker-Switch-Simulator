@@ -515,29 +515,32 @@ def rot_sw_clicked(channel):
 # Callback from rotary encoder clk pin
 def rot_clk_change(channel):
     # called when dial is rotated
-    GPIO.remove_event_detect(channel)
     global dialChange
     global step
     global btime
     global clk
     global dt
-    
+    GPIO.remove_event_detect(dt)
+    GPIO.remove_event_detect(clk)
+
     clkState = GPIO.input(clk)
     dtState = GPIO.input(dt)
     
     if clkState == 0 and dtState == 1:
         dialChange = dialChange - step
     GPIO.add_event_detect(clk, GPIO.FALLING, callback=rot_clk_change, bouncetime=btime)
+    GPIO.add_event_detect(dt, GPIO.FALLING, callback=rot_dt_change, bouncetime=btime)
 
 # Callback from rotary encoder dt pin
 def rot_dt_change(channel):
     # called when dial is rotated
-    GPIO.remove_event_detect(channel)
     global dialChange
     global step
     global btime
     global clk
     global dt
+    GPIO.remove_event_detect(clk)
+    GPIO.remove_event_detect(dt)
 
     clkState = GPIO.input(clk)
     dtState = GPIO.input(dt)
@@ -545,7 +548,7 @@ def rot_dt_change(channel):
     if clkState == 1 and dtState == 0:
         dialChange = dialChange + step
     GPIO.add_event_detect(dt, GPIO.FALLING, callback=rot_dt_change, bouncetime=btime)
-
+    GPIO.add_event_detect(clk, GPIO.FALLING, callback=rot_clk_change, bouncetime=btime)
 
 # ==== Interrupt event handling ====
 
